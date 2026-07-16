@@ -19,19 +19,28 @@ npm start                    # http://localhost:3000
 ## Structure
 
 ```
-index.html          Home — hero + quote form, services, about, process, reviews, areas
-about.html          Company story (founded 1994 by Tony Zuniga), values, credentials, FAQ
-residential.html    Interior, exterior, wood staining & painting
-commercial.html     Commercial interior/exterior, industries, process
-service-areas.html  15 San Diego County cities
-gallery.html        Filterable project grid
-contact.html        Quote form + contact details
-css/style.css       All styles (single stylesheet, CSS custom properties)
-js/main.js          Shared header/footer + interactions + form submit
-server.js           Static file server + POST /api/intake
-lib/notify.js       Sends the lead email via Azure Communication Services
-images/logo.png     Brand logo
+public/                    Everything web-public — this is Vercel's outputDirectory
+  index.html               Home — hero + quote form, services, about, process, reviews
+  about.html               Company story (founded 1994 by Tony Zuniga), values, FAQ
+  residential.html         Interior, exterior, wood staining & painting
+  commercial.html          Commercial interior/exterior, industries, process
+  service-areas.html       15 San Diego County cities
+  gallery.html             Filterable project grid
+  contact.html             Quote form + contact details
+  css/style.css            All styles (single stylesheet, CSS custom properties)
+  js/main.js               Shared header/footer + interactions + form submit
+  images/                  Logo + project photography
+api/intake.js              POST /api/intake — Vercel serverless function
+lib/notify.js              Sends the lead email via Azure Communication Services
+lib/lead.js                Lead parsing/validation, shared by api/ and server.js
+server.js                  Local dev only — mimics Vercel (static public/ + /api/intake)
+vercel.json                outputDirectory: public, cleanUrls
 ```
+
+**Nothing outside `public/` is ever web-readable.** Source and secrets live above it by
+design — that's what keeps `/lib/notify.js` and `.env.local` from being fetchable. Don't
+move static assets out of `public/`, and don't set Vercel's Output Directory to the repo
+root.
 
 ## The quote form
 
@@ -48,20 +57,33 @@ than being swallowed, so a lead is never silently lost.
 
 ### Configuration
 
-`ACS_CONNECTION_STRING` and `ACS_SENDER_ADDRESS` come from `.env.local` (gitignored —
+`ACS_CONNECTION_STRING` and `ACS_SENDER_ADDRESS` come from `.env.local` locally (gitignored —
 never commit it). The sender domain must be verified in the ACS resource.
+
+**On Vercel these must be set as Environment Variables** (Project → Settings → Environment
+Variables) for Production, Preview, and Development. `.env.local` is not deployed. Without
+them the form returns a 502 and every lead is lost, so set them before pointing a real
+domain at the deployment.
 
 Recipients are **hard-coded** in `lib/notify.js` (`NOTIFY_TO` / `NOTIFY_BCC`), matching
 the Guardian project's reasoning: a deploy can't misconfigure where leads land.
 
 Leads go to `tony@` and `admin@paintritepainters.com`, BCC'd to Cohesive.
 
-### Serving rules
+## Deployment (Vercel)
 
-`server.js` serves an explicit allowlist: `*.html` at the root, plus `css/`, `js/`, and
-`images/`. Everything else — `.env.local`, `server.js`, `lib/`, `node_modules/` — returns
-404. This matters: without it, `GET /.env.local` would hand out your ACS access key.
-If you swap in another static host, make sure it enforces the same rule.
+Zero-config against this layout — no build step:
+
+- `public/` is served by the CDN (set via `outputDirectory` in `vercel.json`).
+- `api/intake.js` is auto-detected as a Node serverless function at `/api/intake`.
+- `cleanUrls` makes `/about` serve `about.html`; internal links use `.html` and work either way.
+
+Vercel project settings should be **Framework Preset: Other**, no build command. `vercel.json`
+already pins the output directory, so leave the dashboard's Output Directory blank.
+
+> Don't deploy `server.js` as the request handler. It assumes a long-running host with the
+> HTML on disk next to it; on Vercel only traced code is bundled, so the pages aren't there
+> and every route 404s. It's for local dev only.
 
 ## How it fits together
 

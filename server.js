@@ -1,10 +1,17 @@
+// Local development server. Production runs on Vercel, where public/ is served
+// by the CDN and api/intake.js runs as a serverless function — this file exists
+// so `npm run dev` reproduces that shape locally. Both paths validate through
+// lib/lead.js so they can't drift apart.
 import http from "node:http";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { sendLeadNotification } from "./lib/notify.js";
+import { parseLead } from "./lib/lead.js";
 
-const ROOT = path.dirname(fileURLToPath(import.meta.url));
+// Only public/ is web-readable — mirroring Vercel's outputDirectory. Source and
+// secrets live outside it and so can never be served.
+const PUBLIC = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 const PORT = process.env.PORT || 3000;
 
 const MIME = {
@@ -13,6 +20,7 @@ const MIME = {
   ".js": "text/javascript; charset=utf-8",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon",
 };
@@ -21,11 +29,6 @@ const json = (res, status, body) => {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(body));
 };
-
-const asTrimmedString = (value) =>
-  typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/;
 
 async function readJsonBody(req) {
   const chunks = [];
@@ -46,27 +49,11 @@ async function handleIntake(req, res) {
     return json(res, 400, { error: "Invalid JSON body" });
   }
 
-  const rawEmail = asTrimmedString(body.email)?.toLowerCase();
-  const email = rawEmail && EMAIL_RE.test(rawEmail) ? rawEmail : undefined;
-  const phone = asTrimmedString(body.phone);
-
-  const lead = {
-    name: asTrimmedString(body.name),
-    phone,
-    email,
-    city: asTrimmedString(body.city),
-    propertyType: asTrimmedString(body.propertyType),
-    service: asTrimmedString(body.service),
-    message: asTrimmedString(body.message),
-  };
-
-  // Minimum to work a lead: at least one way to reach them.
-  if (!phone && !email) {
-    return json(res, 400, { error: "A phone number or email is required." });
-  }
+  const parsed = parseLead(body);
+  if (parsed.error) return json(res, parsed.status, { error: parsed.error });
 
   try {
-    await sendLeadNotification(lead);
+    await sendLeadNotification(parsed.lead);
   } catch (error) {
     console.error("Failed to send lead notification email", error);
     return json(res, 502, {
@@ -77,34 +64,20 @@ async function handleIntake(req, res) {
   return json(res, 200, { ok: true });
 }
 
-// Only these are web-public. Everything else in the project root — .env.local,
-// server.js, lib/, package.json, node_modules/ — must never be served.
-const PUBLIC_DIRS = ["css", "js", "images"];
-const isPublic = (rel) => {
-  // No dotfiles, at any depth: .env.local, .git/config, ...
-  const segments = rel.split("/");
-  if (segments.some((s) => s.startsWith("."))) return false;
-  // A top-level page: about.html, index.html — but not server.js at the root.
-  if (segments.length === 1) return segments[0].endsWith(".html");
-  return PUBLIC_DIRS.includes(segments[0]);
+const notFound = (res) => {
+  res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
+  res.end("<h1>404 — Not found</h1><p><a href='/'>Back to PaintRite Painters</a></p>");
 };
 
 async function serveStatic(req, res) {
   const urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
   let rel = urlPath === "/" ? "index.html" : urlPath.slice(1);
-  if (!path.extname(rel)) rel += ".html";
+  if (!path.extname(rel)) rel += ".html"; // cleanUrls: /about -> about.html
 
-  // Resolve inside ROOT only — refuse anything that escapes via ../ traversal.
-  const file = path.resolve(ROOT, rel);
-  if (file !== ROOT && !file.startsWith(ROOT + path.sep)) {
+  // Resolve inside public/ only — refuse anything escaping via ../ traversal.
+  const file = path.resolve(PUBLIC, rel);
+  if (file !== PUBLIC && !file.startsWith(PUBLIC + path.sep)) {
     res.writeHead(403).end("Forbidden");
-    return;
-  }
-
-  // Then: even inside ROOT, only serve what's explicitly public.
-  if (!isPublic(path.relative(ROOT, file).split(path.sep).join("/"))) {
-    res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
-    res.end("<h1>404 — Not found</h1><p><a href='/'>Back to PaintRite Painters</a></p>");
     return;
   }
 
@@ -115,8 +88,7 @@ async function serveStatic(req, res) {
     });
     res.end(data);
   } catch {
-    res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
-    res.end("<h1>404 — Not found</h1><p><a href='/'>Back to PaintRite Painters</a></p>");
+    notFound(res);
   }
 }
 
