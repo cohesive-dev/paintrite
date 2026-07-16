@@ -105,9 +105,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`PaintRite site running at http://localhost:${PORT}`);
-  if (!process.env.ACS_CONNECTION_STRING || !process.env.ACS_SENDER_ADDRESS) {
+  if (!process.env.ACS_CONNECTION_STRING) {
     console.warn(
-      "\n  ⚠  ACS_CONNECTION_STRING / ACS_SENDER_ADDRESS not set — form submissions will fail.\n     Copy .env.example to .env.local and fill in real values, then run: npm start\n",
+      "\n  ⚠  ACS_CONNECTION_STRING not set — form submissions will fail.\n     Copy .env.example to .env.local and fill in the real value, then run: npm start\n",
     );
   }
 });

@@ -57,18 +57,28 @@ than being swallowed, so a lead is never silently lost.
 
 ### Configuration
 
-`ACS_CONNECTION_STRING` and `ACS_SENDER_ADDRESS` come from `.env.local` locally (gitignored —
-never commit it). The sender domain must be verified in the ACS resource.
+`ACS_CONNECTION_STRING` is the **only** environment variable — it holds the ACS access key,
+so it's the only piece that has to stay secret. Locally it comes from `.env.local`
+(gitignored — never commit it).
 
-**On Vercel these must be set as Environment Variables** (Project → Settings → Environment
-Variables) for Production, Preview, and Development. `.env.local` is not deployed. Without
-them the form returns a 502 and every lead is lost, so set them before pointing a real
-domain at the deployment.
+**On Vercel set it as an Environment Variable** (Project → Settings → Environment Variables)
+for Production, Preview, and Development. `.env.local` is not deployed. Without it the form
+returns a 502 and every lead is lost, so set it before pointing a real domain at the
+deployment.
 
-Recipients are **hard-coded** in `lib/notify.js` (`NOTIFY_TO` / `NOTIFY_BCC`), matching
-the Guardian project's reasoning: a deploy can't misconfigure where leads land.
+Everything else is **hard-coded** in `lib/notify.js`, matching the Guardian project's
+reasoning: none of it is secret, and a deploy shouldn't be able to get it wrong.
 
-Leads go to `tony@` and `admin@paintritepainters.com`, BCC'd to Cohesive.
+| | |
+|---|---|
+| From | `DoNotReply@notification.getcohesiveai.com` |
+| To | `tony@` and `admin@paintritepainters.com` |
+| BCC | `nam@` and `kevin@cohesiveapp.com` |
+| Reply-To | the customer's email, when they gave one |
+
+The sender domain (`notification.getcohesiveai.com`) must stay verified in the ACS resource —
+if it isn't, Azure rejects every send. Note the From is a Cohesive domain rather than
+PaintRite's; replies still reach the office because Reply-To points at the customer.
 
 ## Deployment (Vercel)
 
