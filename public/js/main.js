@@ -113,7 +113,7 @@ function renderFooter() {
       </div>
       <div class="footer__bar">
         <span>&copy; ${new Date().getFullYear()} PaintRite Painters. All rights reserved.</span>
-        <span>Locally owned &amp; operated in San Diego, CA &middot; ${SITE.license}</span>
+        <span>Locally owned &amp; operated in San Diego, CA &middot; ${SITE.license} &middot; <a href="privacy-policy.html">Privacy Policy</a></span>
       </div>
     </div>
   </footer>`;
