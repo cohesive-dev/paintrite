@@ -1,10 +1,10 @@
-import { EmailClient } from "@azure/communication-email";
+import { EmailClient, type EmailMessage } from "@azure/communication-email";
 
 // A single shared client. Created lazily so a missing connection string surfaces
 // as a clear runtime error at send time rather than crashing module import.
-let client = null;
+let client: EmailClient | null = null;
 
-function getClient() {
+function getClient(): EmailClient {
   const connectionString = process.env.ACS_CONNECTION_STRING;
   if (!connectionString) {
     throw new Error("ACS_CONNECTION_STRING is not set");
@@ -30,11 +30,21 @@ const NOTIFY_BCC = [
   "kevin@cohesiveapp.com",
 ];
 
-const esc = (s) =>
+export type Lead = {
+  name?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  propertyType?: string;
+  service?: string;
+  message?: string;
+};
+
+const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-function buildBody(lead) {
-  const rows = [
+function buildBody(lead: Lead) {
+  const rows: [string, string | undefined][] = [
     ["Name", lead.name],
     ["Phone", lead.phone],
     ["Email", lead.email],
@@ -77,9 +87,9 @@ function buildBody(lead) {
 
 // Sends the lead notification and waits for Azure to accept it. Throws on
 // misconfiguration or a failed send so the caller can decide how to respond.
-export async function sendLeadNotification(lead) {
+export async function sendLeadNotification(lead: Lead): Promise<void> {
   const { plain, html } = buildBody(lead);
-  const message = {
+  const message: EmailMessage = {
     senderAddress: SENDER_ADDRESS,
     content: {
       subject: "PaintRite Web Lead",

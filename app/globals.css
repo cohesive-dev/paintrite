@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+/* ─── Brand palette ────────────────────────────────────────────────────────
+   Carried over from the original PaintRite stylesheet. Registering them under
+   @theme turns each one into a Tailwind utility (bg-navy, text-yellow, …), so
+   the palette lives in exactly one place.
+
+   navy      #22409a  primary brand — links, ghost buttons, eyebrows on light
+   navy-dark #16296a  navy hover
+   navy-deep #0e1c47  darkest surface — dark sections, footer, hero wash
+   yellow    #f7df1e  accent + primary CTA (always with navy-deep text on it)
+   ink       #14181f  headings
+   body      #4a5262  body copy
+   muted     #79808f  secondary/meta copy
+   line      #e3e6ec  borders
+   soft      #f5f7fa  light section backgrounds
+   ────────────────────────────────────────────────────────────────────────── */
+@theme {
+  --color-navy: #22409a;
+  --color-navy-dark: #16296a;
+  --color-navy-deep: #0e1c47;
+  --color-yellow: #f7df1e;
+  --color-yellow-dark: #e0c800;
+  --color-ink: #14181f;
+  --color-body: #4a5262;
+  --color-muted: #79808f;
+  --color-line: #e3e6ec;
+  --color-soft: #f5f7fa;
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-poppins);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #14181f;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html {
+  scroll-behavior: smooth;
+}
