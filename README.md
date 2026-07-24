@@ -118,10 +118,30 @@ PaintRite's; replies still reach the office because Reply-To points at the custo
 
 ## Deployment (Vercel)
 
-Zero-config: Vercel detects Next.js, runs `next build`, serves the static pages from the CDN
-and `/api/intake` as a Node function. **Framework Preset: Next.js**, no custom output
-directory — the old `vercel.json` (`outputDirectory: public`) was removed and must not come
-back, since it would publish the raw `public/` folder instead of the build.
+Vercel runs `next build`, serves the pre-rendered pages from the CDN, and runs
+`/api/intake` as a Node function.
+
+`vercel.json` pins `"framework": "nextjs"`. That line matters: this project was first
+deployed as a static site, so **Framework Preset: Other** is still saved on it in the
+dashboard, and a saved preset beats auto-detection. Without the pin the build fails with:
+
+```
+Error: No entrypoint found in "/vercel/path0". Set package.json "main" to a server file…
+```
+
+— Vercel looking for a plain Node server because it doesn't think this is Next.js.
+Settings in `vercel.json` take precedence over the dashboard, so the pin fixes it without
+anyone having to remember a dashboard toggle.
+
+Two leftovers from the static era to clear in **Project → Settings → Build & Deployment**
+if they're still set, since either will break the build:
+
+- **Output Directory** — must be blank/default. The old setup pointed it at `public/`,
+  which would publish the raw folder instead of the build.
+- **Build Command** — must be blank/default (`next build`). The old setup had none.
+
+The previous `vercel.json` (`outputDirectory: public`, `cleanUrls`) is gone and must not
+come back. `cleanUrls` is unnecessary now — App Router paths have no extension anyway.
 
 ## Brand
 
